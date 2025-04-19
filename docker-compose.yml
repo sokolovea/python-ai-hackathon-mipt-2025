@@ -16,7 +16,7 @@ services:
   frontend:
     build: ./frontend
     ports:
-      - "5000:5000"
+      - "8501:8501"
     environment:
       - BACKEND_URL=http://backend:8000
       - GET_URL=http://localhost:8000

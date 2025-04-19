@@ -96,30 +96,30 @@ async def upload_video(file: UploadFile = File(...)):
             buffer.write(await file.read())
         print(f"Видео сохранено: {video_path}")
 
-        process_video(video_path, output_dir)
-        text = start_transcribation(video_path)
+        # process_video(video_path, output_dir)
+        # text = start_transcribation(video_path)
 
-        with open(transcrib_path, 'w', encoding='UTF-8') as f:
-            if isinstance(text, list):  
-                f.writelines(text)
-            else:  
-                f.write(text)
-
-
-        source = LectureGenerator.load_source_text(transcrib_path)
-
-        generator = LectureGenerator(api_key=API_KEY, output_file=TEXT_MD_PATH)
-        generator.generate_lecture(source)
-        generator.save_to_file(TEXT_MD_PATH)
+        # with open(transcrib_path, 'w', encoding='UTF-8') as f:
+        #     if isinstance(text, list):  
+        #         f.writelines(text)
+        #     else:  
+        #         f.write(text)
 
 
-        markdown_to_docx(TEXT_MD_PATH, WORD_MD_PATH)
+        # source = LectureGenerator.load_source_text(transcrib_path)
+
+        # generator = LectureGenerator(api_key=API_KEY, output_file=TEXT_MD_PATH)
+        # generator.generate_lecture(source)
+        # generator.save_to_file(TEXT_MD_PATH)
+
+
+        # markdown_to_docx(transcrib_path, WORD_MD_PATH)
 
         text_md = None
-        with open(TEXT_MD_PATH, 'r', encoding='UTF-8') as f:
-            text_md = f.readlines()
+        # with open(TEXT_MD_PATH, 'r', encoding='UTF-8') as f:
+        #     text_md = f.readlines()
         
-        return {"file_id": file_id, "text_md": text_md}
+        return {"file_id": file_id, "text_md": "temp"}
     except Exception as e:
         print(f"Ошибка обработки видео: {e}")
         raise HTTPException(500, str(e))

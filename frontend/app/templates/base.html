@@ -6,6 +6,55 @@
     <title>Конспектирование видео</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+
+                /* Новый стиль для отображения имени загружаемого файла */
+        .custom-file-label span {
+            display: block;
+            margin-top: 0.5rem;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        /* Кнопка сброса */
+        .reset-top {
+            text-align: right;
+            margin-bottom: 1rem;
+        }
+
+        .reset-btn {
+            background: var(--error);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+        }
+
+        .reset-btn:hover {
+            background: #b71c1c;
+            transform: scale(1.05);
+        }
+
+        /* Таймкоды с прокруткой */
+        .timecodes-container {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .timecodes-container::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .timecodes-container::-webkit-scrollbar-thumb {
+            background: var(--primary);
+            border-radius: 4px;
+        }
+
+        .timecodes-container::-webkit-scrollbar-thumb:hover {
+            background: var(--primary-hover);
+        }
         :root {
             --primary: #1e88e5;
             --primary-hover: #1565c0;
@@ -176,20 +225,24 @@
 
             // Обработка таймкодов
             document.addEventListener('click', function(e) {
-                if (e.target.closest('.timestamp-link')) {
+                const link = e.target.closest('.timestamp-link'); // Находим ближайший родительский элемент
+                if (link) {
                     e.preventDefault();
-                    const time = parseFloat(e.target.dataset.time);
+                    const time = parseFloat(link.dataset.time); // Получаем data-time с самого элемента
                     const video = document.getElementById('main-video');
-                    if (video) {
+                    if (!isNaN(time) && video) {
                         video.currentTime = time;
                         video.play();
                         video.scrollIntoView({
                             behavior: 'smooth',
-                            block: 'center'
+                            block: 'center',
                         });
+                    } else {
+                        console.error('Некорректное значение времени:', link.dataset.time);
                     }
                 }
             });
+
 
             // Drag and drop
             const dropArea = document.querySelector('.custom-file-label');
@@ -212,6 +265,16 @@
                     dropArea.style.background = '';
                 });
             }
+
+            const fileInput = document.querySelector('.file-input input[type="file"]');
+            const fileLabelSpan = document.querySelector('.custom-file-label span');
+
+            fileInput.addEventListener('change', () => {
+                if (fileInput.files.length > 0) {
+                    fileLabelSpan.textContent = fileInput.files[0].name;
+                }
+            });
+
         });
     </script>
 </body>

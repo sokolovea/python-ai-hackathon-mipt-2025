@@ -7,9 +7,13 @@ BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 GET_URL = os.getenv("GET_URL", "http://localhost:8000")
 
 timecodes = [
-    {"time": "00:01:00", "label": "Начало", "seconds": 60},
-    {"time": "00:05:00", "label": "Основной блок", "seconds": 300},
-    {"time": "00:10:00", "label": "Заключение", "seconds": 600}
+    {"time": "00:00:00", "label": "Начало", "seconds": 0},
+    {"time": "00:00:30", "label": "Действие 1", "seconds": 30},
+    {"time": "00:01:00", "label": "Действие 2", "seconds": 60},
+    {"time": "00:01:54", "label": "Иван Иванович наконец-таки доехал до Клязьмы", "seconds": 116},
+    {"time": "00:02:11", "label": "Закупился на базаре", "seconds": 131},
+    {"time": "00:02:40", "label": "Возвращается с базара", "seconds": 160},
+    {"time": "00:03:20", "label": "Конец", "seconds": 200}
 ]
 
 def register_routes(app):
