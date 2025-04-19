@@ -1,8 +1,8 @@
 FROM python:3.11-slim
 
 ENV PYTHONUNBUFFERED=1 \
-    STREAMLIT_SERVER_PORT=8501 \
-    STREAMLIT_SERVER_ADDRESS=0.0.0.0
+    FLASK_ENV=production \
+    PYTHONPATH="${PYTHONPATH}:/app"
 
 WORKDIR /app
 
@@ -11,5 +11,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 8501
-CMD ["streamlit", "run", "streamlit_app.py"]
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "wsgi:app"]

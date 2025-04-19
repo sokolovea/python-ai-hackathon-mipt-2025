@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Конспектирование видео</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary: #1e88e5;
+            --primary-hover: #1565c0;
+            --success: #43a047;
+            --error: #e53935;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            animation: fadeIn 0.5s ease-in;
+        }
+
+        /* Анимации */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Загрузчик */
+        .loader {
+            display: none;
+            text-align: center;
+            margin: 2rem 0;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto;
+        }
+
+        /* Форма */
+        .upload-form {
+            background: #fff;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s ease;
+        }
+
+        .upload-form:hover {
+            transform: translateY(-2px);
+        }
+
+        .file-input {
+            position: relative;
+            margin: 1rem 0;
+        }
+
+        .file-input input[type="file"] {
+            opacity: 0;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+        }
+
+        .custom-file-label {
+            display: block;
+            padding: 1rem;
+            border: 2px dashed var(--primary);
+            border-radius: 8px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+
+        .custom-file-label:hover {
+            background: #e3f2fd;
+            border-color: var(--primary-hover);
+        }
+
+        /* Кнопки */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+            transform: translateY(-1px);
+        }
+
+        /* Видеоплеер */
+        .video-wrapper {
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            margin: 2rem 0;
+        }
+
+        /* Таймкоды */
+        .timecodes {
+            background: #f8f9fa;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin: 2rem 0;
+        }
+
+        .timestamp-link {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            margin: 8px 0;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+        }
+
+        .timestamp-link:hover {
+            transform: translateX(5px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        /* Адаптивность */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            .video-wrapper {
+                margin: 1rem 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        {% block content %}{% endblock %}
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Обработка загрузки файла
+            const form = document.querySelector('form');
+            const loader = document.createElement('div');
+            loader.className = 'loader';
+            loader.innerHTML = '<div class="spinner"></div><p>Идет обработка видео...</p>';
+
+            form?.addEventListener('submit', function(e) {
+                this.style.opacity = '0.5';
+                this.parentNode.insertBefore(loader, this.nextSibling);
+                loader.style.display = 'block';
+            });
+
+            // Обработка таймкодов
+            document.addEventListener('click', function(e) {
+                if (e.target.closest('.timestamp-link')) {
+                    e.preventDefault();
+                    const time = parseFloat(e.target.dataset.time);
+                    const video = document.getElementById('main-video');
+                    if (video) {
+                        video.currentTime = time;
+                        video.play();
+                        video.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }
+                }
+            });
+
+            // Drag and drop
+            const dropArea = document.querySelector('.custom-file-label');
+            if (dropArea) {
+                dropArea.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    dropArea.style.background = '#e3f2fd';
+                });
+
+                dropArea.addEventListener('dragleave', () => {
+                    dropArea.style.background = '';
+                });
+
+                dropArea.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    const files = e.dataTransfer.files;
+                    if (files.length > 0) {
+                        document.querySelector('input[type="file"]').files = files;
+                    }
+                    dropArea.style.background = '';
+                });
+            }
+        });
+    </script>
+</body>
+</html>
