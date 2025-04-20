@@ -6,13 +6,14 @@ import os
 from pathlib import Path
 
 from app.config import UPLOAD_DIR
-from app.services.audio_service import *
 from app.models.lecture_generator import *
 from app.utils.logging_utils import setup_logger
 from app.utils.file_utils import ensure_upload_dir
 from app.services.video_service import process_video
 from app.services.lecture_service import generate_lecture
+from app.services.audio_service import TranscriptionPipeline
 from app.services.docx_service import MarkdownConverter
+from app.services.timecode_service import convert_segments_to_timecodes
 
 logger = setup_logger()
 
@@ -26,6 +27,9 @@ app.add_middleware(
 
 ensure_upload_dir(UPLOAD_DIR)
 
+import json
+from typing import List, Dict
+
 @app.post("/upload/")
 async def upload_video(file: UploadFile = File(...)):
     logger.info(f"Получен файл: {file.filename}")
@@ -37,6 +41,7 @@ async def upload_video(file: UploadFile = File(...)):
     transcrib_path = os.path.join(output_dir, "transcrib.txt")
     TEXT_MD_PATH = os.path.join(output_dir, "summary.md")
     WORD_MD_PATH = os.path.join(output_dir, "summary.docx")
+    JSON_PATH = os.path.join(output_dir, "timecodes.json")
     try:
         with open(video_path, "wb") as buffer:
             buffer.write(await file.read())
@@ -58,6 +63,12 @@ async def upload_video(file: UploadFile = File(...)):
             else:  
                 f.write(text)
 
+        logger.info("0!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        timecodes = convert_segments_to_timecodes(segments)
+        logger.info("1!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+        with open(JSON_PATH, 'w', encoding='utf-8') as f:
+            json.dump(timecodes, f, ensure_ascii=False, indent=4)
+        logger.info("2!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
 
         # generate_lecture(text, TEXT_MD_PATH)

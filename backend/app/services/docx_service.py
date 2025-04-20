@@ -233,20 +233,66 @@ class MarkdownConverter:
             logging.warning(f"Платформа {system} не поддерживается для экспорта PDF")
 
     def convert(self, input_md: str, output_docx: str, export_pdf: bool = False):
+        """
+        Конвертация Markdown -> DOCX (и PDF при need).
+        Если в config.use_pandoc == True, вызывает pandoc, иначе
+        использует старую логику python-docx + LibreOffice.
+        """
         logging.info(f"Чтение Markdown из {input_md}")
         try:
-            with open(input_md, 'r', encoding='utf-8') as f:
-                markdown_text = f.read()
+            md_text = Path(input_md).read_text(encoding="utf-8")
         except FileNotFoundError:
             logging.error(f"Файл {input_md} не найден.")
             return
         except Exception as e:
-            logging.error(f"Ошибка при чтении Markdown-файла: {e}")
+            logging.error(f"Ошибка при чтении Markdown: {e}")
             return
 
-        self.parse_markdown(markdown_text)
-        self.build_doc()
-        self.save(output_docx)
+        if self.config.get("use_pandoc", False):
+            tmp_md = Path(output_docx).with_suffix(".tmp.md")
+            try:
+                tmp_md.write_text(md_text, encoding="utf-8")
 
-        if export_pdf:
-            self.export_pdf(output_docx)
+                cmd = [
+                    "pandoc", str(tmp_md),
+                    "-o", output_docx,
+                    "--mathml"
+                ]
+                logging.info(f"Запуск Pandoc: {' '.join(cmd)}")
+                subprocess.run(cmd, check=True)
+
+                logging.info(f"DOCX успешно сгенерирован через Pandoc: {output_docx}")
+
+                if export_pdf:
+                    pdf_path = Path(output_docx).with_suffix(".pdf")
+                    cmd_pdf = [
+                        "pandoc", str(tmp_md),
+                        "-o", str(pdf_path),
+                        "--pdf-engine=xelatex",
+                        "-V", "lang=ru",                   
+                        "-V", "mainfont=DejaVu Serif",     
+                        "-V", "sansfont=DejaVu Sans",      
+                        "-V", "monofont=DejaVu Sans Mono"  
+                    ]
+                    logging.info(f"Запуск Pandoc для PDF: {' '.join(cmd_pdf)}")
+                    subprocess.run(cmd_pdf, check=True)
+                    logging.info(f"PDF успешно сгенерирован через Pandoc: {pdf_path}")
+
+            except subprocess.CalledProcessError as e:
+                logging.error(f"Pandoc вернул ненулевой код: {e.returncode}")
+            except Exception as e:
+                logging.error(f"Ошибка во время работы Pandoc: {e}")
+            finally:
+                try:
+                    tmp_md.unlink()
+                except Exception:
+                    pass
+        else:
+            self.parse_markdown(md_text)
+            self.build_doc()
+            self.save(output_docx)
+            if export_pdf:
+                self.export_pdf(output_docx)
+
+        logging.info("Конвертация завершена.") 
+

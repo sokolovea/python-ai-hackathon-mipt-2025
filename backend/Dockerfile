@@ -4,6 +4,8 @@ RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     ffmpeg \
     libreoffice \
+    texlive-lang-cyrillic \
+    fonts-dejavu \
     pandoc texlive-xetex texlive-fonts-recommended texlive-latex-extra \
     && rm -rf /var/lib/apt/lists/*
 

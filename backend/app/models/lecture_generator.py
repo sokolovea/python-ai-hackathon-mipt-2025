@@ -14,6 +14,7 @@ from typing import List, Dict, Optional
 import hashlib
 import textwrap
 import re
+import random
 
 logger = logging.getLogger(__name__)
 
@@ -29,23 +30,52 @@ class LectureGenerator:
         self.logger = logging.getLogger(__name__)
         self.logger.info("LectureGenerator инициализирован")
 
-    def _send_prompt(self, prompt: str) -> str:
-        for attempt in range(MAX_RETRIES):
+        self.BAD_ANSWER_PATTERNS = [
+            "я не могу", 
+            "как искусственный интеллект", 
+            "я не имею доступа", 
+            "выходит за рамки", 
+            "мне жаль", 
+            "не предусмотрено",
+            "Не люблю менять тему разговора, но вот сейчас тот самый случай.",
+            "Что-то в вашем вопросе меня смущает. Может, поговорим на другую тему?"
+        ]
+
+    def _send_prompt(self, prompt: str, title: str) -> str:
+        for attempt in range(1, self.retries + 1):
             try:
+                logger.info(f"[{title}] Отправка запроса (попытка {attempt} из {self.retries})")
                 response = self.client.chat(
-                    Chat(
-                        messages=[Messages(role=MessagesRole.USER, content=prompt)],
-                        temperature=0.6,
-                        max_tokens=8000
-                    )
+                    messages=[{"role": "user", "content": prompt}],
+                    temperature=0.6,
+                    max_tokens=5000
                 )
-                return response.choices[0].message.content
+
+                if not response or not hasattr(response, "choices"):
+                    raise ValueError("Ответ пустой или без choices")
+
+                choice = response.choices[0]
+                message = getattr(choice, "message", None)
+                content = getattr(message, "content", "").strip() if message else ""
+
+                if not content:
+                    raise ValueError("Ответ не содержит текста")
+
+                if any(bad in content.lower() for bad in self.BAD_ANSWER_PATTERNS):
+                    raise ValueError("Обнаружен шаблон ответа-заглушки")
+
+                return content
+
             except Exception as e:
-                self.logger.warning(f"Ошибка при запросе (попытка {attempt + 1}): {e}")
-                if attempt == MAX_RETRIES - 1:
-                    self.logger.error("Превышено количество попыток. Прерывание.")
-                    raise
-                time.sleep(DELAY_BETWEEN_REQUESTS * (attempt + 1))
+                logger.warning(f"[{title}] Ошибка генерации: {e}")
+                if attempt < self.retries:
+                    sleep_time = self.delay + random.uniform(0, 1)
+                    logger.info(f"[{title}] Повтор через {sleep_time:.1f} сек...")
+                    time.sleep(sleep_time)
+                else:
+                    logger.error(f"[{title}] Не удалось получить валидный ответ после {self.retries} попыток.")
+                    self.lecture_content.append(f"## Ошибка генерации для раздела «{title}»\n")
+                    return f"⚠️ Ошибка генерации контента для «{title}»."
 
     def _get_cache_path(self, name: str, content: Optional[str] = None) -> str:
         safe_name = re.sub(r'[\\/*?:"<>|]', "_", name)
@@ -169,7 +199,6 @@ class LectureGenerator:
     def _extract_sections_from_list(self, markdown_text: str) -> List[Dict]:
         sections = []
         for line in markdown_text.splitlines():
-            # проверяем, что строка начинается с номера пункта (например, "1.", "2.", и т.д.)
             if re.match(r"^\d+\.", line):
                 title = line.split(".", 1)[1].strip()
                 if "[" in title and "]" in title:
@@ -177,8 +206,6 @@ class LectureGenerator:
                 sections.append({"title": title.strip("# ").strip("*"), "level": 2})
         return sections
 
-    # def _extract_sections_from_headers(self, markdown_text: str) -> List[Dict]:
-    #     sections = []
     def _extract_sections(self, markdown_text: str) -> List[Dict]:
         sections = []
         for line in markdown_text.splitlines():
