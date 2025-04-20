@@ -40,7 +40,7 @@ def register_routes(app):
                 if response.status_code == 200:
                     data = response.json()
                     session['file_id'] = data['file_id']
-                    session['text_md'] = data['text_md']
+                    # session['text_md'] = data['text_md']
                     return redirect(url_for('index'))
                 else:
                     error = "Ошибка загрузки файла: некорректное содержимое"
