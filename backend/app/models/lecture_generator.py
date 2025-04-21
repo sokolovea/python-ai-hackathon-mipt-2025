@@ -26,6 +26,8 @@ class LectureGenerator:
         self.lecture_content: List[str] = []
         self.cache_dir = "lecture_cache"
         self.output_file = output_file
+        self.retries = 3
+        self.delay = 10
         os.makedirs(self.cache_dir, exist_ok=True)
         self.logger = logging.getLogger(__name__)
         self.logger.info("LectureGenerator инициализирован")
@@ -46,10 +48,9 @@ class LectureGenerator:
             try:
                 logger.info(f"[_send_prompt] Отправка запроса (попытка {attempt} из {self.retries})")
                 response = self.client.chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.6,
-                    max_tokens=5000
-                )
+                    Chat(messages=[Messages(role=MessagesRole.USER, content=prompt)],
+                        temperature=0.6, max_tokens=5000
+                    ))
 
                 if not response or not hasattr(response, "choices"):
                     raise ValueError("Ответ пустой или без choices")
