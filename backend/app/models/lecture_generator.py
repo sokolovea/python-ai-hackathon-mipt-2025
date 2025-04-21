@@ -120,7 +120,6 @@ class LectureGenerator:
                     raise
                 time.sleep(delay * (attempt + 1))
 
-    "TODO: НОВЫЙ МЕТОД, СТОИТ ПРОВЕРИТЬ НА АДЕКВАТНОСТЬ, В ТЕСТАХ ПОКАЗАЛ СЕБЯ ХОРОШО"
     def estimate_section_timestamps(
         self,
         sections: List[Dict],
@@ -213,7 +212,6 @@ class LectureGenerator:
             structure = self._send_prompt(structure_prompt)
             self._save_cache("structure", structure, source_text)
 
-        # self.lecture_content.append(structure)
         sections = self._extract_sections_from_list(structure)
         self.logger.info(f"Найдено {len(sections)} разделов. Приступаю к генерации содержания...")
 
@@ -274,9 +272,12 @@ class LectureGenerator:
 
     def save_to_file(self, filename: str) -> None:
         try:
+            full_md = "\n\n".join(self.lecture_content)
+            clean_md = re.sub(r"\[\d{2}:\d{2}:\d{2}\]", "", full_md)
+            clean_md = re.sub(r" {2,}", " ", clean_md)
             with open(filename, 'w', encoding='utf-8') as f:
-                f.write("\n\n".join(self.lecture_content))
-            self.logger.info(f"Лекция успешно сохранена в файл: {filename}")
+                f.write(clean_md)
+            self.logger.info(f"Лекция успешно сохранена в файл без таймкодов: {filename}")
         except Exception as e:
             self.logger.error(f"Не удалось сохранить лекцию: {e}")
 
