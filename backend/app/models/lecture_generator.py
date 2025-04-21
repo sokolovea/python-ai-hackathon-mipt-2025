@@ -6,13 +6,13 @@ import logging
 from typing import List, Dict, Optional
 from tqdm import tqdm
 import textwrap
-from app.config import *
+from config import *
 
 from gigachat import GigaChat
 from gigachat.models import Chat, Messages, MessagesRole
-from typing import List, Dict, Optional
-import hashlib
-import textwrap
+from sentence_transformers import SentenceTransformer, util
+from whisper_tr import *
+
 import re
 import random
 
@@ -20,6 +20,8 @@ logger = logging.getLogger(__name__)
 
 class LectureGenerator:
     def __init__(self, api_key: str, output_file: str):
+        self.delay = 10
+        self.retries = 3
         if not api_key:
             raise ValueError("API key обязателен")
         self.client = GigaChat(credentials=api_key, verify_ssl_certs=False)
@@ -46,9 +48,11 @@ class LectureGenerator:
             try:
                 logger.info(f"[_send_prompt] Отправка запроса (попытка {attempt} из {self.retries})")
                 response = self.client.chat(
-                    messages=[{"role": "user", "content": prompt}],
-                    temperature=0.6,
-                    max_tokens=5000
+                    Chat(
+                        messages=[Messages(role=MessagesRole.USER, content=prompt)],
+                        temperature=0.6,
+                        max_tokens=5000
+                    )
                 )
 
                 if not response or not hasattr(response, "choices"):
@@ -117,6 +121,50 @@ class LectureGenerator:
                     raise
                 time.sleep(delay * (attempt + 1))
 
+    "TODO: НОВЫЙ МЕТОД, СТОИТ ПРОВЕРИТЬ НА АДЕКВАТНОСТЬ, В ТЕСТАХ ПОКАЗАЛ СЕБЯ ХОРОШО"
+    def estimate_section_timestamps(
+        self,
+        sections: List[Dict],
+        segments: List[Dict],
+        model_name: str = "intfloat/multilingual-e5-base",
+        top_k: int = 1,
+    ) -> List[Dict]:
+        """
+        Оценивает таймкоды начала тем на основе семантического сходства между названиями тем и сегментами транскрибации.
+
+        :param sections: список тем лекции [{"title": "Введение"}, ...]
+        :param segments: список сегментов с таймкодами и текстом [{"start_time": "00:00:10", "text": "..."}]
+        :param model_name: SentenceTransformer model
+        :param top_k: сколько ближайших сегментов учитывать (обычно 1)
+        :return: обновлённый список sections с ключом 'start_time'
+        """
+
+        self.logger.info("Загрузка модели SentenceTransformer...")
+        model = SentenceTransformer(model_name)
+
+        section_titles = [s["title"] for s in sections]
+        segment_texts = [s["text"] for s in segments]
+
+        self.logger.info("Генерация эмбедингов для тем и сегментов...")
+        section_embeddings = model.encode(section_titles, convert_to_tensor=True)
+        segment_embeddings = model.encode(segment_texts, convert_to_tensor=True)
+
+        self.logger.info("Расчёт сходства эмбедингов...")
+        similarity_matrix = util.cos_sim(section_embeddings, segment_embeddings)
+
+        updated_sections = []
+        for i, section in enumerate(sections):
+            top_matches = similarity_matrix[i].topk(k=top_k)
+            best_idx = top_matches.indices[0].item()
+            best_segment = segments[best_idx]
+
+            section_with_time = section.copy()
+            section_with_time["start_time"] = best_segment.get("start_time", "")
+            self.logger.info(f"Тема '{section['title']}' -> {section_with_time['start_time']}")
+            updated_sections.append(section_with_time)
+
+        return updated_sections
+
     def generate_lecture(self, source_text: str, segments: Optional[List[Dict]] = None) -> None:
         self.logger.info("Запуск генерации структуры лекции...")
 
@@ -166,9 +214,16 @@ class LectureGenerator:
             structure = self._send_prompt(structure_prompt)
             self._save_cache("structure", structure, source_text)
 
-        self.lecture_content.append(structure)
+        # self.lecture_content.append(structure)
         sections = self._extract_sections_from_list(structure)
         self.logger.info(f"Найдено {len(sections)} разделов. Приступаю к генерации содержания...")
+
+        "TODO: Вызов нового метода"
+        if segments:
+            sections = self.estimate_section_timestamps(sections, segments)
+
+        structure = self._insert_timestamps_into_structure(structure, sections)
+        self.lecture_content.append(structure)
 
         for section in tqdm(sections, desc="Генерация разделов"):
             title = section['title']
@@ -181,7 +236,7 @@ class LectureGenerator:
             content_prompt = textwrap.dedent(f"""
             Раздел: "{title}"
             Инструкции:
-            - Напиши этот раздел на основе контекста ниже, используя академический стиль. Пиши от третьего лица. 
+            - Напиши этот раздел на основе контекста ниже, используя академический стиль. Пиши от третьего лица.
             - Применяй Markdown. Как заголовок второго уровня (##) выделяй только название раздела.
             - Избегай "воды" и повторов, фокусируйся на сути.
             - Не выдумывай от себя — используй только информацию из контекста ниже.
@@ -194,7 +249,6 @@ class LectureGenerator:
             content = self._send_prompt(content_prompt)
             self._save_cache(title, content, source_text)
             self.lecture_content.append(content)
-            print(content)
             time.sleep(DELAY_BETWEEN_REQUESTS)
 
     def _extract_sections_from_list(self, markdown_text: str) -> List[Dict]:
@@ -226,3 +280,83 @@ class LectureGenerator:
             self.logger.info(f"Лекция успешно сохранена в файл: {filename}")
         except Exception as e:
             self.logger.error(f"Не удалось сохранить лекцию: {e}")
+
+    def _insert_timestamps_into_structure(self, structure, sections):
+        """
+                Заменяет временные метки в квадратных скобках на соответствующие значения из sections.
+
+                :param structure: Исходная структура плана лекции (строка).
+                :param sections: Список словарей с информацией о секциях.
+                :return: Обновленная структура плана лекции с замененными временными метками.
+                """
+        # Регулярное выражение для поиска временных меток в квадратных скобках
+        timestamp_pattern = r"\[\d{2}:\d{2}:\d{2}\]"
+
+        # Создаем копию структуры для модификации
+        updated_structure = structure
+
+        # Проходим по всем секциям и заменяем временные метки
+        for section in sections:
+            start_time = section.get("start_time", "")
+
+            # Ищем первую метку в квадратных скобках
+            match = re.search(timestamp_pattern, updated_structure)
+            if match:
+                # Заменяем найденную метку на значение start_time
+                updated_structure = updated_structure.replace(match.group(0), f"[{start_time}]", 1)
+
+        return updated_structure
+
+# pipeline = TranscriptionPipeline(
+#     video_path="физика.mp4",
+#     engine="google",
+#     whisper_model="medium"
+# )
+#
+# segments, full_text = pipeline.run()
+#
+# pipeline.save_to_json(segments, path="output.json")
+# pipeline.save_to_txt(full_text, path="output.txt")
+# pipeline.save_to_srt(segments, path="output.srt")
+#
+# print("segments", segments)
+
+import json
+def read_json_to_list(file_path):
+    try:
+        # Открываем файл и загружаем данные
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        # Проверяем, что данные являются списком словарей
+        if isinstance(data, list) and all(isinstance(item, dict) for item in data):
+            return data
+        else:
+            raise ValueError("Файл JSON не содержит ожидаемый формат списка словарей.")
+
+    except FileNotFoundError:
+        print(f"Ошибка: Файл '{file_path}' не найден.")
+    except json.JSONDecodeError:
+        print(f"Ошибка: Файл '{file_path}' содержит некорректный JSON.")
+    except Exception as e:
+        print(f"Произошла ошибка: {e}")
+
+
+# Пример использования
+file_path = "json физика whisper.txt"  # Укажите путь к вашему JSON-файлу
+segments = read_json_to_list(file_path)
+
+# Вывод первых нескольких записей для проверки
+if segments:
+    for i, entry in enumerate(segments[:5]):  # Выводим первые 5 записей
+        print(f"Запись {i + 1}:")
+        print(entry)
+
+full_text = ""
+with open("output whisper.txt", "r", encoding="utf-8") as file:
+    full_text = file.read()
+print(full_text)
+
+gen = LectureGenerator(API_KEY, "lecture.md")
+gen.generate_lecture(full_text, segments)
+gen.save_to_file("lecture.md")

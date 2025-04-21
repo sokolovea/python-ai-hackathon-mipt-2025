@@ -7,13 +7,14 @@ services package - бизнес-логика приложения
 - video_service.py: обработка видео
 - docx_service.py: работа с DOCX
 """
-
+from .VideoProcessor import VideoProcessor
 from .audio_service import TranscriptionPipeline
 from .lecture_service import generate_lecture
 from .video_service import process_video
 from .docx_service import MarkdownConverter
 
 all = [
+    'VideoProcessor',
     'extract_audio_from_video',
     'split_audio',
     'recognize_chunk',
