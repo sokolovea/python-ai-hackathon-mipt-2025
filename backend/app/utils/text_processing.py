@@ -2,7 +2,7 @@ import re
 import logging
 from typing import List, Dict, Tuple
 
-# Логгер (как в исходном коде)
+
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s"
