@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block content %}
+    <h1 style="text-align: center; margin-bottom: 2rem;">🎥 Конспектирование видео</h1>
+
+    {% if error %}
+        <div class="alert alert-error" style="animation: shake 0.5s;">
+            <i class="fas fa-exclamation-circle"></i> {{ error }}
+        </div>
+    {% endif %}
+
+    {% if not file_id %}
+        <form class="upload-form" method="POST" enctype="multipart/form-data">
+            <div class="file-input">
+                <label class="custom-file-label">
+                    <i class="fas fa-cloud-upload-alt"></i> 
+                    <span>Перетащите файл или кликните для выбора</span>
+                    <input type="file" name="file" accept=".mp4,.avi,.mov" required>
+                </label>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="fas fa-upload"></i> Загрузить видео
+            </button>
+        </form>
+    {% else %}
+        <div class="reset-top">
+            <form action="{{ url_for('reset') }}" method="POST">
+                <button type="submit" class="btn reset-btn">
+                    <i class="fas fa-times-circle"></i> Загрузить новое видео
+                </button>
+            </form>
+        </div>
+
+        <div class="alert alert-success" style="animation: slideIn 0.5s ease-out;">
+            <i class="fas fa-check-circle"></i> Результаты обработки видео:
+        </div>
+
+        <div class="content-wrapper">
+            <div class="video-wrapper">
+                <video id="main-video" controls width="100%">
+                    <source src="{{ get_url }}/files/{{ file_id }}/video.mp4" type="video/mp4">
+                </video>
+            </div>
+
+            <div class="timecodes">
+                <div class="timecodes-container">
+                    <h3><i class="fas fa-bookmark"></i> Таймкоды</h3>
+                    {% for t in timecodes %}
+                        <div class="timestamp-link" data-time="{{ t.seconds }}">
+                            <i class="fas fa-clock"></i>
+                            <div>
+                                <div style="font-weight: 500;">{{ t.label }}</div>
+                                <div style="color: #675; font-size: 0.9em;">{{ t.time }}</div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="downloads">
+            <h3><i class="fas fa-download"></i> Ссылки на готовые файлы</h3>
+            <div style="display: flex; gap: 1rem; margin-top: 1rem;">
+                <a href="{{ get_url }}/files/{{ file_id }}/summary.docx" 
+                   class="btn btn-primary">
+                    <i class="fas fa-file-word"></i> DOCX
+                </a>
+                <a href="{{ get_url }}/files/{{ file_id }}/summary.pdf" 
+                    class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> PDF
+                </a>
+                <a href="{{ get_url }}/files/{{ file_id }}/summary.md" 
+                   class="btn btn-primary">
+                    <i class="fas fa-file-code"></i> Markdown
+                </a>
+            </div>
+        </div>
+    {% endif %}
+{% endblock %}
