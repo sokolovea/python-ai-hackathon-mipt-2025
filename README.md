@@ -83,7 +83,7 @@ docker-compose down && docker-compose up --build
   "margins": { "top": 1, "bottom": 1, "left": 1.25, "right": 1.25 },
   "use_pandoc": true
 }
-
+```
 ## 🎯 Производительность
 
 | Компонент          | Время обработки  |
