@@ -271,15 +271,16 @@ class LectureGenerator:
         return sections
 
     def save_to_file(self, filename: str) -> None:
-        try:
-            full_md = "\n\n".join(self.lecture_content)
-            clean_md = re.sub(r"\[\d{2}:\d{2}:\d{2}\]", "", full_md)
-            clean_md = re.sub(r" {2,}", " ", clean_md)
-            with open(filename, 'w', encoding='utf-8') as f:
-                f.write(clean_md)
-            self.logger.info(f"Лекция успешно сохранена в файл без таймкодов: {filename}")
-        except Exception as e:
-            self.logger.error(f"Не удалось сохранить лекцию: {e}")
+            try:
+                full_md = "\n\n".join(self.lecture_content)
+                clean_md = re.sub(r"\[\d{2}:\d{2}:\d{2}\]", "", full_md)
+                clean_md = re.sub(r" {2,}", " ", clean_md)
+                with open(filename, 'w', encoding='utf-8') as f:
+                    f.write(clean_md)
+                self.logger.info(f"Лекция успешно сохранена в файл без таймкодов: {filename}")
+            except Exception as e:
+                self.logger.error(f"Не удалось сохранить лекцию: {e}")
+
 
     def _insert_timestamps_into_structure(self, structure, sections):
         """
@@ -306,57 +307,3 @@ class LectureGenerator:
                 updated_structure = updated_structure.replace(match.group(0), f"[{start_time}]", 1)
 
         return updated_structure
-
-# pipeline = TranscriptionPipeline(
-#     video_path="физика.mp4",
-#     engine="google",
-#     whisper_model="medium"
-# )
-#
-# segments, full_text = pipeline.run()
-#
-# pipeline.save_to_json(segments, path="output.json")
-# pipeline.save_to_txt(full_text, path="output.txt")
-# pipeline.save_to_srt(segments, path="output.srt")
-#
-# print("segments", segments)
-
-import json
-def read_json_to_list(file_path):
-    try:
-        # Открываем файл и загружаем данные
-        with open(file_path, 'r', encoding='utf-8') as file:
-            data = json.load(file)
-
-        # Проверяем, что данные являются списком словарей
-        if isinstance(data, list) and all(isinstance(item, dict) for item in data):
-            return data
-        else:
-            raise ValueError("Файл JSON не содержит ожидаемый формат списка словарей.")
-
-    except FileNotFoundError:
-        print(f"Ошибка: Файл '{file_path}' не найден.")
-    except json.JSONDecodeError:
-        print(f"Ошибка: Файл '{file_path}' содержит некорректный JSON.")
-    except Exception as e:
-        print(f"Произошла ошибка: {e}")
-
-
-# Пример использования
-file_path = "json физика whisper.txt"  # Укажите путь к вашему JSON-файлу
-segments = read_json_to_list(file_path)
-
-# Вывод первых нескольких записей для проверки
-if segments:
-    for i, entry in enumerate(segments[:5]):  # Выводим первые 5 записей
-        print(f"Запись {i + 1}:")
-        print(entry)
-
-full_text = ""
-with open("output whisper.txt", "r", encoding="utf-8") as file:
-    full_text = file.read()
-print(full_text)
-
-gen = LectureGenerator(API_KEY, "lecture.md")
-gen.generate_lecture(full_text, segments)
-gen.save_to_file("lecture.md")
