@@ -57,17 +57,6 @@ async def upload_video(file: UploadFile = File(...)):
             else:  
                 f.write(text)
 
-        '''
-        ПОСЛЕ ПОЧИНКИ LectureGenerator УДАЛИТЬ БЛОК
-        '''
-        with open(TEXT_MD_PATH, 'w', encoding='UTF-8') as f:
-            if isinstance(text, list):  
-                f.writelines(text)
-            else:  
-                f.write(text)
-        '''
-        КОНЕЦ БЛОКА ДЛЯ УДАЛЕНИЯ
-        '''
 
         timecodes = convert_segments_to_timecodes(segments)
         with open(JSON_PATH, 'w', encoding='utf-8') as f:
@@ -75,10 +64,7 @@ async def upload_video(file: UploadFile = File(...)):
         logger.info("Таймкоды сохранены")
 
 
-        '''
-        ПОСЛЕ ПОЧИНКИ LectureGenerator РАСКОММЕНТИРОВАТЬ
-        '''
-        # generate_lecture(text, TEXT_MD_PATH)
+        generate_lecture(text, TEXT_MD_PATH)
 
 
         converter = MarkdownConverter("app/config.json")

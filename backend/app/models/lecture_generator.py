@@ -41,10 +41,10 @@ class LectureGenerator:
             "Что-то в вашем вопросе меня смущает. Может, поговорим на другую тему?"
         ]
 
-    def _send_prompt(self, prompt: str, title: str) -> str:
+    def _send_prompt(self, prompt: str) -> str:
         for attempt in range(1, self.retries + 1):
             try:
-                logger.info(f"[{title}] Отправка запроса (попытка {attempt} из {self.retries})")
+                logger.info(f"[_send_prompt] Отправка запроса (попытка {attempt} из {self.retries})")
                 response = self.client.chat(
                     messages=[{"role": "user", "content": prompt}],
                     temperature=0.6,
@@ -67,15 +67,16 @@ class LectureGenerator:
                 return content
 
             except Exception as e:
-                logger.warning(f"[{title}] Ошибка генерации: {e}")
+                logger.warning(f"[_send_prompt] Ошибка генерации: {e}")
                 if attempt < self.retries:
                     sleep_time = self.delay + random.uniform(0, 1)
-                    logger.info(f"[{title}] Повтор через {sleep_time:.1f} сек...")
+                    logger.info(f"[_send_prompt] Повтор через {sleep_time:.1f} сек...")
                     time.sleep(sleep_time)
                 else:
-                    logger.error(f"[{title}] Не удалось получить валидный ответ после {self.retries} попыток.")
-                    self.lecture_content.append(f"## Ошибка генерации для раздела «{title}»\n")
-                    return f"⚠️ Ошибка генерации контента для «{title}»."
+                    logger.error(f"[_send_prompt] Не удалось получить валидный ответ после {self.retries} попыток.")
+                    self.lecture_content.append("## Ошибка генерации\n")
+                    return "⚠️ Ошибка генерации контента."
+
 
     def _get_cache_path(self, name: str, content: Optional[str] = None) -> str:
         safe_name = re.sub(r'[\\/*?:"<>|]', "_", name)

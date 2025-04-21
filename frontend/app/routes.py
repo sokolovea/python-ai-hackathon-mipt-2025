@@ -34,7 +34,7 @@ def register_routes(app):
                 if response.status_code == 200:
                     data = response.json()
                     session['file_id'] = data['file_id']
-                    res = requests.get(f"{GET_URL}/uploads/{session.get('file_id')}/timecodes.json")
+                    res = requests.get(f"{BACKEND_URL}/files/{session.get('file_id')}/timecodes.json")
                     
                     if res.status_code == 200:
                         timecodes_json = res.json()
