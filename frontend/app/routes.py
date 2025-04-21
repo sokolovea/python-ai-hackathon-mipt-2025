@@ -26,6 +26,29 @@ def register_routes(app):
             if file.filename == '':
                 error = "Файл не выбран"
                 return render_template('index.html', error=error)
+                        
+            formatting_config = {
+                "font": request.form.get("font", "Arial"),
+                "font_size": int(request.form.get("font_size", 12)),
+                "first_line_indent": float(request.form.get("first_line_indent", 0.25)),
+                "heading_sizes": {
+                    "1": int(request.form.get("heading_1", 16)),
+                    "2": int(request.form.get("heading_2", 14)),
+                    "3": int(request.form.get("heading_3", 12))
+                },
+                "margins": {
+                    "top": float(request.form.get("margin_top", 1.0)),
+                    "bottom": float(request.form.get("margin_bottom", 1.0)),
+                    "left": float(request.form.get("margin_left", 1.25)),
+                    "right": float(request.form.get("margin_right", 1.25))
+                },
+                "use_pandoc": "use_pandoc" in request.form
+            }
+
+            print(formatting_config)
+            # with open(config_path, 'w') as f:
+            #     json.dump(formatting_config, f, indent=2)
+            #     app.logger.info(f"Config saved to {config_path}")
             
             try:
                 files = {'file': (file.filename, file.stream)}
