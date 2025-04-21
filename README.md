@@ -69,7 +69,7 @@ docker-compose down && docker-compose up --build
 | Видео (OpenCV)     | ~30 секунд       |
 | AI-анализ (GigaChat)| ~20 минут       |
 
-Оптимизации:
+## Оптимизации:
 - Whisper: включен fp16 режим
 - OpenCV: batch-обработка кадров
 - GigaChat: кеширование запросов
