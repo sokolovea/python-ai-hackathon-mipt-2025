@@ -18,6 +18,59 @@
                     <input type="file" name="file" accept=".mp4,.avi,.mov" required>
                 </label>
             </div>
+            <!-- Начало блока с настройками форматирования -->
+            <div class="formatting-settings" style="margin: 2rem 0; padding: 1.5rem; border: 1px solid #ddd; border-radius: 8px;">
+                <h3 style="margin-bottom: 1.5rem;"><i class="fas fa-cog"></i> Настройки форматирования</h3>
+                
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1.5rem;">
+                    <!-- Колонка 1 -->
+                    <div>
+                        <div class="form-group">
+                            <label>Шрифт:</label>
+                            <input type="text" class="form-control" name="font" value="Arial" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Размер основного текста (pt):</label>
+                            <input type="number" class="form-control" name="font_size" value="12" min="8" max="36" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Отступ первой строки (дюймы):</label>
+                            <input type="number" class="form-control" name="first_line_indent" value="0.25" step="0.1" min="0" required>
+                        </div>
+                    </div>
+
+                    <!-- Колонка 2 -->
+                    <div>
+                        <div class="form-group">
+                            <label>Размеры заголовков (pt):</label>
+                            <div style="display: grid; gap: 0.5rem;">
+                                <input type="number" class="form-control" name="heading_1" placeholder="Заголовок 1" value="16" required>
+                                <input type="number" class="form-control" name="heading_2" placeholder="Заголовок 2" value="14" required>
+                                <input type="number" class="form-control" name="heading_3" placeholder="Заголовок 3" value="12" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Поля страницы (дюймы):</label>
+                            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem;">
+                                <input type="number" class="form-control" name="margin_top" placeholder="Сверху" value="1" step="0.1" required>
+                                <input type="number" class="form-control" name="margin_bottom" placeholder="Снизу" value="1" step="0.1" required>
+                                <input type="number" class="form-control" name="margin_left" placeholder="Слева" value="1.25" step="0.1" required>
+                                <input type="number" class="form-control" name="margin_right" placeholder="Справа" value="1.25" step="0.1" required>
+                            </div>
+                        </div>
+
+                        <div class="form-check" style="margin-top: 1rem;">
+                            <input class="form-check-input" type="checkbox" name="use_pandoc" id="usePandoc" checked>
+                            <label class="form-check-label" for="usePandoc">
+                                Использовать Pandoc для конвертации
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <button type="submit" class="btn btn-primary">
                 <i class="fas fa-upload"></i> Загрузить видео
             </button>
