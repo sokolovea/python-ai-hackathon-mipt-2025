@@ -81,7 +81,7 @@ async def upload_video(file: UploadFile = File(...)):
         with open(TEXT_MD_PATH, 'r', encoding='UTF-8') as f:
             text_md = f.readlines()
         
-        return {"file_id": file_id, "text_md": text_md, "text_docx": WORD_MD_PATH}
+        return {"file_id": file_id, "timecodes_json": timecodes}
     except Exception as e:
         print(f"Ошибка обработки видео: {e}")
         raise HTTPException(500, str(e))

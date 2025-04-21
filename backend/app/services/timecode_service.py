@@ -20,7 +20,7 @@ def convert_segments_to_timecodes(segments):
         formatted_time = format_time(seg['start_time'])
         timecodes.append({
             "time": formatted_time,
-            "label": f"Действие {i}",
+            "label": f"{seg[i]}",
             "seconds": time_to_seconds(seg['start_time'])
         })
     

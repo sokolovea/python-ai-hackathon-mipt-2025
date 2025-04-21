@@ -2,16 +2,17 @@ from flask import render_template, request, session, redirect, url_for
 import os
 import requests
 import json
-from flask import current_app as app
 
 BACKEND_URL = os.getenv("BACKEND_URL", "http://backend:8000")
 GET_URL = os.getenv("GET_URL", "http://localhost:8000")
 
 timecodes = [{1: 2}]
+timecodes_json = 0
 
 def register_routes(app):
     @app.route('/', methods=['GET', 'POST'])
     def index():
+        global timecodes_json
         error = None
         file_info = None
         
@@ -33,6 +34,8 @@ def register_routes(app):
                 if response.status_code == 200:
                     data = response.json()
                     session['file_id'] = data['file_id']
+                    timecodes_json = data['timecodes_json']
+                    print(f'TIMECODES_JSON = {timecodes_json}')
                     # res = requests.get(f"{GET_URL}/uploads/{file_id}/timecodes.json")
                     # print(res.json())
                     # if res.status_code == 200:
@@ -52,7 +55,7 @@ def register_routes(app):
             'index.html',
             error=error,
             file_id=file_id,
-            timecodes=timecodes,
+            timecodes=timecodes_json if timecodes_json else timecodes,
             get_url=GET_URL
         )
     
