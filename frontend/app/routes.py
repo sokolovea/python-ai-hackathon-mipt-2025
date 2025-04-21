@@ -34,12 +34,14 @@ def register_routes(app):
                 if response.status_code == 200:
                     data = response.json()
                     session['file_id'] = data['file_id']
-                    timecodes_json = data['timecodes_json']
-                    print(f'TIMECODES_JSON = {timecodes_json}')
-                    # res = requests.get(f"{GET_URL}/uploads/{file_id}/timecodes.json")
-                    # print(res.json())
-                    # if res.status_code == 200:
-                    #     timecodes = res.json()
+                    res = requests.get(f"{GET_URL}/uploads/{session.get('file_id')}/timecodes.json")
+                    
+                    if res.status_code == 200:
+                        timecodes_json = res.json()
+                        print(f"Полученные таймкоды: {timecodes_json}")
+                    else:
+                        app.logger.error(f"Ошибка получения таймкодов: {res.status_code}")
+                        timecodes_json = [{}]
                     return redirect(url_for('index'))
                 else:
                     error = "Ошибка загрузки файла: некорректное содержимое"
@@ -51,6 +53,7 @@ def register_routes(app):
         #     session.pop('file_id', None)
 
         file_id = session.get('file_id')
+        print(f'TIMECODES_JSON = {timecodes_json}')
         return render_template(
             'index.html',
             error=error,
