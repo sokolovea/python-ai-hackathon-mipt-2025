@@ -14,3 +14,12 @@ gigachat>=0.1.2
 tqdm>=4.66.0
 
 python-docx>=0.8.0
+
+opencv-python~=4.11.0.86
+scikit-image~=0.25.2
+pix2text~=1.1.2.3
+img2table~=1.4.1
+surya-ocr==0.13.1
+
+openai-whisper
+sentence-transformers~=4.1.0

@@ -7,7 +7,7 @@ from typing import List, Dict, Optional
 from tqdm import tqdm
 import textwrap
 from app.config import *
-
+from collections import OrderedDict
 from gigachat import GigaChat
 from gigachat.models import Chat, Messages, MessagesRole
 from typing import List, Dict, Optional
@@ -15,8 +15,10 @@ import hashlib
 import textwrap
 import re
 import random
+from sentence_transformers import SentenceTransformer, util
 
 logger = logging.getLogger(__name__)
+
 
 class LectureGenerator:
     def __init__(self, api_key: str, output_file: str):
@@ -28,18 +30,16 @@ class LectureGenerator:
         self.lecture_content: List[str] = []
         self.cache_dir = "lecture_cache"
         self.output_file = output_file
-        self.retries = 3
-        self.delay = 10
         os.makedirs(self.cache_dir, exist_ok=True)
         self.logger = logging.getLogger(__name__)
         self.logger.info("LectureGenerator инициализирован")
 
         self.BAD_ANSWER_PATTERNS = [
-            "я не могу", 
-            "как искусственный интеллект", 
-            "я не имею доступа", 
-            "выходит за рамки", 
-            "мне жаль", 
+            "я не могу",
+            "как искусственный интеллект",
+            "я не имею доступа",
+            "выходит за рамки",
+            "мне жаль",
             "не предусмотрено",
             "Не люблю менять тему разговора, но вот сейчас тот самый случай.",
             "Что-то в вашем вопросе меня смущает. Может, поговорим на другую тему?"
@@ -50,9 +50,12 @@ class LectureGenerator:
             try:
                 logger.info(f"[_send_prompt] Отправка запроса (попытка {attempt} из {self.retries})")
                 response = self.client.chat(
-                    Chat(messages=[Messages(role=MessagesRole.USER, content=prompt)],
-                        temperature=0.6, max_tokens=5000
-                    ))
+                    Chat(
+                        messages=[Messages(role=MessagesRole.USER, content=prompt)],
+                        temperature=0.6,
+                        max_tokens=5000
+                    )
+                )
 
                 if not response or not hasattr(response, "choices"):
                     raise ValueError("Ответ пустой или без choices")
@@ -79,7 +82,6 @@ class LectureGenerator:
                     logger.error(f"[_send_prompt] Не удалось получить валидный ответ после {self.retries} попыток.")
                     self.lecture_content.append("## Ошибка генерации\n")
                     return "⚠️ Ошибка генерации контента."
-
 
     def _get_cache_path(self, name: str, content: Optional[str] = None) -> str:
         safe_name = re.sub(r'[\\/*?:"<>|]', "_", name)
@@ -120,12 +122,14 @@ class LectureGenerator:
                     raise
                 time.sleep(delay * (attempt + 1))
 
+    "TODO: НОВЫЙ МЕТОД, СТОИТ ПРОВЕРИТЬ НА АДЕКВАТНОСТЬ, В ТЕСТАХ ПОКАЗАЛ СЕБЯ ХОРОШО"
+
     def estimate_section_timestamps(
-        self,
-        sections: List[Dict],
-        segments: List[Dict],
-        model_name: str = "intfloat/multilingual-e5-base",
-        top_k: int = 1,
+            self,
+            sections: List[Dict],
+            segments: List[Dict],
+            model_name: str = "intfloat/multilingual-e5-base",
+            top_k: int = 1,
     ) -> List[Dict]:
         """
         Оценивает таймкоды начала тем на основе семантического сходства между названиями тем и сегментами транскрибации.
@@ -163,7 +167,45 @@ class LectureGenerator:
 
         return updated_sections
 
-    def generate_lecture(self, source_text: str, segments: Optional[List[Dict]] = None) -> None:
+
+    def _extract_visual_elements(self, analysis_path: str) -> (List[str], List[str]):
+        """
+        Читает JSON-файл с результатами анализа видео и
+        возвращает два списка:
+          1) уникальных формул в LaTeX-обёртке $$…$$
+          2) уникальных таблиц в Markdown
+
+        :param analysis_path: путь к video_analysis.json
+        :return: (formulas, tables)
+        """
+        formulas = OrderedDict()
+        tables = OrderedDict()
+
+        # 1) загружаем JSON
+        try:
+            with open(analysis_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+        except (IOError, json.JSONDecodeError) as e:
+            self.logger.error(f"Не удалось прочитать {analysis_path}: {e}")
+            return [], []
+
+        formulas_string = ""
+        tables_string = ""
+
+        for frame_key, frame_data in data.items():
+            if "formulas" in frame_data and frame_data["formulas"]:
+                formulas_string += "\n".join(frame_data["formulas"]) + "\n"
+
+            if "tables" in frame_data and frame_data["tables"]:
+                tables_string += "\n".join(frame_data["tables"]) + "\n"
+
+        return formulas_string.strip(), tables_string.strip()
+
+    def generate_lecture(self,
+                         source_text: str,
+                         segments: Optional[List[Dict]] = None,
+                         analysis_json: Optional[str] = None) -> None:
+
         self.logger.info("Запуск генерации структуры лекции...")
 
         if not source_text.strip():
@@ -184,6 +226,18 @@ class LectureGenerator:
             В дальнейшем используй их для примерного определения времени начала различных разделов.
             """)
 
+        visual_info = ""
+        if analysis_json:
+            formulas, tables = self._extract_visual_elements(analysis_json)
+
+            if formulas:
+                visual_info += "Обнаруженные формулы (LaTeX):\n"
+                visual_info += formulas + "\n\n"
+
+            if tables:
+                visual_info += "Обнаруженные таблицы (Markdown):\n"
+                visual_info += tables + "\n\n"
+
         structure_cache = self._load_cache("structure", source_text)
         if structure_cache:
             structure = structure_cache
@@ -198,13 +252,12 @@ class LectureGenerator:
             2. Пиши в официально-деловом или вдохновляющем стиле, без попыток вести диалог.
             3. Не вставляй шаблонные фразы, которые не связаны с содержанием (например, защитные реплики ИИ).
             4. Текст должен быть цельным, без повтора одних и тех же фраз в конце (проверяй дубли).
-            
             Действуй следующим образом:
             - Составь план лекции в виде нумерованного списка разделов. Просто перечисли названия разделов, не описывай их.
             - Для каждого раздела из плана добавь примерное время его начала на видео в формате [HH:MM:SS]. Используй приведенные выше фрагменты лекции.
             - Каждый раздел должен быть уникальным и содержать только одну тему.
             - Последний раздел плана должен быть "Выводы" или "Резюме".
-            
+
             Транскрибированный текст лекции:
             {source_text}
             """
@@ -212,6 +265,7 @@ class LectureGenerator:
             structure = self._send_prompt(structure_prompt)
             self._save_cache("structure", structure, source_text)
 
+        # self.lecture_content.append(structure)
         sections = self._extract_sections_from_list(structure)
         self.logger.info(f"Найдено {len(sections)} разделов. Приступаю к генерации содержания...")
 
@@ -239,6 +293,8 @@ class LectureGenerator:
             - Не выдумывай от себя — используй только информацию из контекста ниже.
             - Исправь ошибки или опечатки, если встретишь.
             - Если приведено несколько примеров или заданий, приводи только один пример. Просто добавь его в текст раздела, а не как отдельный раздел.
+            Из приведенных ниже формул и таблиц можешь использовать те, которые относятся к теме раздела. Если встретишь некорректную формулу, игнорируй.
+            {visual_info}
             Контекст:
             {source_text}
             """
@@ -271,16 +327,12 @@ class LectureGenerator:
         return sections
 
     def save_to_file(self, filename: str) -> None:
-            try:
-                full_md = "\n\n".join(self.lecture_content)
-                clean_md = re.sub(r"\[\d{2}:\d{2}:\d{2}\]", "", full_md)
-                clean_md = re.sub(r" {2,}", " ", clean_md)
-                with open(filename, 'w', encoding='utf-8') as f:
-                    f.write(clean_md)
-                self.logger.info(f"Лекция успешно сохранена в файл без таймкодов: {filename}")
-            except Exception as e:
-                self.logger.error(f"Не удалось сохранить лекцию: {e}")
-
+        try:
+            with open(filename, 'w', encoding='utf-8') as f:
+                f.write("\n\n".join(self.lecture_content))
+            self.logger.info(f"Лекция успешно сохранена в файл: {filename}")
+        except Exception as e:
+            self.logger.error(f"Не удалось сохранить лекцию: {e}")
 
     def _insert_timestamps_into_structure(self, structure, sections):
         """
@@ -307,3 +359,33 @@ class LectureGenerator:
                 updated_structure = updated_structure.replace(match.group(0), f"[{start_time}]", 1)
 
         return updated_structure
+
+
+
+
+# API_KEY = "NmE2MWQ5MTctOTQ3ZC00ZGI5LWIwODMtMGIxOTNkY2FiYzI5OjI3NTJjMzQwLWQ1NTMtNGJlNy1iMzI4LWE3YTMyYTA2NTNmYQ=="
+# OUTPUT_FILE = "lecture.md"
+# MAX_RETRIES = 3
+# DELAY_BETWEEN_REQUESTS = 90
+
+
+
+
+
+
+# file_path = "whisper.json"
+# segments = read_json_to_list(file_path)
+#
+# if segments:
+#     for i, entry in enumerate(segments[:5]):
+#         print(f"Запись {i + 1}:")
+#         print(entry)
+#
+# full_text = ""
+# with open("output full.txt", "r", encoding="utf-8") as file:
+#     full_text = file.read()
+# print(full_text)
+#
+# gen = LectureGenerator(API_KEY, "lecture.md")
+# gen.generate_lecture(full_text, segments, "video.json")
+# gen.save_to_file("lecture.md")

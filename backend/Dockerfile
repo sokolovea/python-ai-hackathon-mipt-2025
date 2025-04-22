@@ -16,6 +16,11 @@ COPY requirements.txt .
 
 RUN pip install --user --no-cache-dir -r requirements.txt
 
+COPY requirements2.txt .
+
+# Устанавливаем зависимости из второго файла
+RUN pip install --user --no-cache-dir -r requirements2.txt
+
 FROM base
 
 WORKDIR /app

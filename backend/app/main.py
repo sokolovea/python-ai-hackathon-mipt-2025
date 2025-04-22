@@ -30,6 +30,26 @@ ensure_upload_dir(UPLOAD_DIR)
 import json
 from typing import List, Dict
 
+
+def read_json_to_list(file_path):
+    try:
+        # Открываем файл и загружаем данные
+        with open(file_path, 'r', encoding='utf-8') as file:
+            data = json.load(file)
+
+        # Проверяем, что данные являются списком словарей
+        if isinstance(data, list) and all(isinstance(item, dict) for item in data):
+            return data
+        else:
+            raise ValueError("Файл JSON не содержит ожидаемый формат списка словарей.")
+
+    except FileNotFoundError:
+        print(f"Ошибка: Файл '{file_path}' не найден.")
+    except json.JSONDecodeError:
+        print(f"Ошибка: Файл '{file_path}' содержит некорректный JSON.")
+    except Exception as e:
+        print(f"Произошла ошибка: {e}")
+
 @app.post("/upload/")
 async def upload_video(file: UploadFile = File(...)):
     logger.info(f"Получен файл: {file.filename}")
@@ -40,6 +60,7 @@ async def upload_video(file: UploadFile = File(...)):
     video_path = os.path.join(output_dir, "video.mp4")
     transcrib_path = os.path.join(output_dir, "transcrib.txt")
     TEXT_MD_PATH = os.path.join(output_dir, "summary.md")
+    JSON_PATH_FROM_VIDEO = os.path.join(output_dir, "video.json")
     WORD_MD_PATH = os.path.join(output_dir, "summary.docx")
     JSON_PATH = os.path.join(output_dir, "timecodes.json")
     try:
@@ -64,7 +85,7 @@ async def upload_video(file: UploadFile = File(...)):
         logger.info("Таймкоды сохранены")
 
 
-        generate_lecture(text, TEXT_MD_PATH)
+        generate_lecture(text, TEXT_MD_PATH, JSON_PATH_FROM_VIDEO)
 
 
         converter = MarkdownConverter("app/config.json")
