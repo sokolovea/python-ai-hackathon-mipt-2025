@@ -1,12 +1,21 @@
 FROM python:3.11-slim as base
 
-RUN apt-get update && \
+RUN echo "deb http://ftp.debian.org/debian bookworm contrib" >> /etc/apt/sources.list && \
+    apt-get update && \
+    echo ttf-mscorefonts-installer msttcorefonts/accepted-msttcorefonts-eula select true | debconf-set-selections && \
     apt-get install -y --no-install-recommends \
-    ffmpeg \
-    libreoffice \
-    texlive-lang-cyrillic \
-    fonts-dejavu \
-    pandoc texlive-xetex texlive-fonts-recommended texlive-latex-extra \
+        fontconfig \
+        ttf-mscorefonts-installer \
+        ffmpeg \
+        libreoffice \
+        pandoc \
+        texlive-full \
+        texlive-xetex \
+        texlive-lang-cyrillic \
+        fonts-dejavu \
+        fonts-liberation \
+        lmodern \
+    && fc-cache -f \
     && rm -rf /var/lib/apt/lists/*
 
 FROM base as builder
@@ -18,7 +27,6 @@ RUN pip install --user --no-cache-dir -r requirements.txt
 
 COPY requirements2.txt .
 
-# Устанавливаем зависимости из второго файла
 RUN pip install --user --no-cache-dir -r requirements2.txt
 
 FROM base

@@ -456,7 +456,8 @@ class VideoProcessor:
                 "charts": charts,
                 "tables": tables
             }
-        with open("video_analysis.json", "w", encoding="utf-8") as f:
+        print("JSON FROM VIDEO\n", result)
+        with open(self.output_dir + "/video_analysis.json", "w", encoding="utf-8") as f:
             json.dump(result, f, ensure_ascii=False, indent=2)
         return result
 

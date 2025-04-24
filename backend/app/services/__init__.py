@@ -12,6 +12,7 @@ from .audio_service import TranscriptionPipeline
 from .lecture_service import generate_lecture
 from .video_service import process_video
 from .docx_service import MarkdownConverter
+from .frames_service import get_frames_information
 
 all = [
     'extract_audio_from_video',

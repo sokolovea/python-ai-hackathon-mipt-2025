@@ -2,16 +2,7 @@
     "font": "Arial",
     "font_size": 12,
     "first_line_indent": 0.25,
-    "heading_sizes": {
-      "1": 16,
-      "2": 14,
-      "3": 12
-    },
-    "margins": {
-      "top": 1,
-      "bottom": 1,
-      "left": 1.25,
-      "right": 1.25
-    }
+    "heading_sizes": { "1": 16, "2": 14, "3": 12 },
+    "margins": { "top": 1, "bottom": 1, "left": 1.25, "right": 1.25 },
+    "use_pandoc": true
   }
-  

@@ -14,6 +14,7 @@ from app.services.lecture_service import generate_lecture
 from app.services.audio_service import TranscriptionPipeline
 from app.services.docx_service import MarkdownConverter
 from app.services.timecode_service import convert_segments_to_timecodes
+from app.services.frames_service import get_frames_information
 
 logger = setup_logger()
 
@@ -83,9 +84,9 @@ async def upload_video(file: UploadFile = File(...)):
             json.dump(timecodes, f, ensure_ascii=False, indent=4)
         logger.info("Таймкоды сохранены")
 
-        
-
-        generate_lecture(text, TEXT_MD_PATH, segments)
+        json_from_video = get_frames_information(video_path=video_path, output_dir=output_dir)
+        print("JSON FROM VIDEO WAS GETTED IN MAIN\n", json_from_video)
+        generate_lecture(text, json_from_video, TEXT_MD_PATH, segments)
 
         converter = MarkdownConverter("app/config.json")
         converter.convert(TEXT_MD_PATH, WORD_MD_PATH, export_pdf=True)
