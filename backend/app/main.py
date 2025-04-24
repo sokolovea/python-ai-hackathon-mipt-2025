@@ -78,15 +78,14 @@ async def upload_video(file: UploadFile = File(...)):
             else:  
                 f.write(text)
 
-
         timecodes = convert_segments_to_timecodes(segments)
         with open(JSON_PATH, 'w', encoding='utf-8') as f:
             json.dump(timecodes, f, ensure_ascii=False, indent=4)
         logger.info("Таймкоды сохранены")
 
+        
 
-        generate_lecture(text, TEXT_MD_PATH, JSON_PATH_FROM_VIDEO)
-
+        generate_lecture(text, TEXT_MD_PATH, segments)
 
         converter = MarkdownConverter("app/config.json")
         converter.convert(TEXT_MD_PATH, WORD_MD_PATH, export_pdf=True)

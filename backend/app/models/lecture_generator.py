@@ -269,7 +269,6 @@ class LectureGenerator:
         sections = self._extract_sections_from_list(structure)
         self.logger.info(f"Найдено {len(sections)} разделов. Приступаю к генерации содержания...")
 
-        "TODO: Вызов нового метода"
         if segments:
             sections = self.estimate_section_timestamps(sections, segments)
 

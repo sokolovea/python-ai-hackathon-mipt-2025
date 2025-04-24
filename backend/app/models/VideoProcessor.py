@@ -460,9 +460,9 @@ class VideoProcessor:
             json.dump(result, f, ensure_ascii=False, indent=2)
         return result
 
-
-if __name__ == "__main__":
-    processor = VideoProcessor(output_dir="output_frames")
-    video_path = "static/5.mp4"
-    result = processor.process_video(video_path, frame_skip=2 * 24, num_threads=4)
-    print("Результаты сохранены в video_analysis.json")
+#
+# if __name__ == "__main__":
+#     processor = VideoProcessor(output_dir="output_frames")
+#     video_path = "static/5.mp4"
+#     result = processor.process_video(video_path, frame_skip=2 * 24, num_threads=4)
+#     print("Результаты сохранены в video_analysis.json")
