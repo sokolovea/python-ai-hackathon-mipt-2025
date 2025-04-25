@@ -3,6 +3,7 @@ from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
 import uuid
 import os
+import traceback
 from pathlib import Path
 
 from app.config import UPLOAD_DIR
@@ -98,6 +99,7 @@ async def upload_video(file: UploadFile = File(...)):
         return {"file_id": file_id, "timecodes_json": timecodes}
     except Exception as e:
         print(f"Ошибка обработки видео: {e}")
+        print(traceback.format_exc())
         raise HTTPException(500, str(e))
 
 @app.get("/frames/{file_id}")

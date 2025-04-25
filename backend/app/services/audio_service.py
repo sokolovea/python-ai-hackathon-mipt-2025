@@ -36,7 +36,7 @@ class TranscriptionPipeline:
             audio_path: str = "output_audio.wav",
             chunk_length_ms: int = 30000,
             engine: str = "google",
-            whisper_model: str = "base"):
+            whisper_model: str = "tiny"):
         """
         Инициализация пайплайна транскрибации.
 

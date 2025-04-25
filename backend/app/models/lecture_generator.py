@@ -358,33 +358,3 @@ class LectureGenerator:
                 updated_structure = updated_structure.replace(match.group(0), f"[{start_time}]", 1)
 
         return updated_structure
-
-
-
-
-# API_KEY = "NmE2MWQ5MTctOTQ3ZC00ZGI5LWIwODMtMGIxOTNkY2FiYzI5OjI3NTJjMzQwLWQ1NTMtNGJlNy1iMzI4LWE3YTMyYTA2NTNmYQ=="
-# OUTPUT_FILE = "lecture.md"
-# MAX_RETRIES = 3
-# DELAY_BETWEEN_REQUESTS = 90
-
-
-
-
-
-
-# file_path = "whisper.json"
-# segments = read_json_to_list(file_path)
-#
-# if segments:
-#     for i, entry in enumerate(segments[:5]):
-#         print(f"Запись {i + 1}:")
-#         print(entry)
-#
-# full_text = ""
-# with open("output full.txt", "r", encoding="utf-8") as file:
-#     full_text = file.read()
-# print(full_text)
-#
-# gen = LectureGenerator(API_KEY, "lecture.md")
-# gen.generate_lecture(full_text, segments, "video.json")
-# gen.save_to_file("lecture.md")

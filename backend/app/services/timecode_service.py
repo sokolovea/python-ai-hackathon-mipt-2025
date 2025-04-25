@@ -35,7 +35,13 @@ def convert_segments_to_timecodes(segments):
     return timecodes
 
 def time_to_seconds(time_str: str) -> int:
-    parts = list(map(int, time_str.split(':')))
+    parts = []
+    if '.' in time_str:
+        ms_and_other = time_str.split('.')
+        parts = list(map(int, ms_and_other[0].split(':')))
+    else:
+        parts = list(map(int, time_str.split(':')))
+
     return parts[0] * 3600 + parts[1] * 60 + parts[2]
 
 def format_time(time_str: str) -> str:
