@@ -12,7 +12,7 @@ import whisper
 
 # Настройка логгирования как в исходном коде
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
         logging.FileHandler("app.log"),
@@ -82,7 +82,23 @@ class TranscriptionPipeline:
         return chunks
 
     def format_milliseconds(self, ms):
-        return str(datetime.timedelta(milliseconds=ms))
+        """Конвертирует миллисекунды в формат HH:MM:SS.sss"""
+        logger.debug(f"Formatting milliseconds: {ms}, type: {type(ms)}")
+        try:
+            if isinstance(ms, str):
+                if ms in ['00.000', '0.000', ''] or '.' in ms:
+                    logger.debug(f"Converting string to float: {ms}")
+                    ms = float(ms.replace(',', '.')) * 1000  # Секунды в миллисекунды
+                else:
+                    ms = int(ms)
+            ms = float(ms)
+            seconds, milliseconds = divmod(ms, 1000)
+            minutes, seconds = divmod(seconds, 60)
+            hours, minutes = divmod(minutes, 60)
+            return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}.{int(milliseconds):03d}"
+        except (ValueError, TypeError) as e:
+            logger.error(f"Ошибка форматирования времени: {ms} -> {e}")
+            return "00:00:00.000"
 
     def recognize_chunk_google(self, chunk_path, chunk_index, language="ru-RU"):
         recognizer = sr.Recognizer()
@@ -93,11 +109,13 @@ class TranscriptionPipeline:
             with sr.AudioFile(chunk_path) as source:
                 audio_data = recognizer.record(source)
                 text = recognizer.recognize_google(audio_data, language=language)
-                return {
+                result = {
                     "start_time": self.format_milliseconds(start_ms),
                     "end_time": self.format_milliseconds(end_ms),
                     "text": text
                 }
+                self.logger.debug(f"Google chunk: {result}")
+                return result
         except sr.UnknownValueError:
             logging.warning(f"Не удалось распознать речь в: {chunk_path}")
         except sr.RequestError as e:
@@ -105,28 +123,40 @@ class TranscriptionPipeline:
         except Exception as e:
             logging.error(f"Непредвиденная ошибка при обработке {chunk_path}: {e}")
 
-        return {
+        result = {
             "start_time": self.format_milliseconds(start_ms),
             "end_time": self.format_milliseconds(end_ms),
             "text": ""
         }
+        self.logger.debug(f"Google chunk (empty): {result}")
+        return result
 
     def recognize_chunk_whisper(self, chunk_path, chunk_index, language="ru"):
         start_ms = chunk_index * self.chunk_length_ms
         end_ms = start_ms + self.chunk_length_ms
 
         try:
-            result = self.whisper.transcribe(chunk_path, language=language, fp16=False, task="transcribe")
-            text = result["text"].strip()
+            result = self.whisper.transcribe(chunk_path, language=language, fp16=False)
+            segments = []
+            for seg in result["segments"]:
+                # Явное преобразование времени
+                start = float(seg["start"]) * 1000  # секунды -> миллисекунды
+                end = float(seg["end"]) * 1000
 
-            return {
+                segments.append({
+                    "start_time": self.format_milliseconds(start),
+                    "end_time": self.format_milliseconds(end),
+                    "text": seg["text"].strip()
+                })
+
+            return segments[-1] if segments else {
                 "start_time": self.format_milliseconds(start_ms),
                 "end_time": self.format_milliseconds(end_ms),
-                "text": text
+                "text": ""
             }
 
         except Exception as e:
-            logging.error(f"Ошибка в {chunk_path} [{self.engine}]: {e}")
+            logger.error(f"Ошибка в {chunk_path}: {e}")
             return {
                 "start_time": self.format_milliseconds(start_ms),
                 "end_time": self.format_milliseconds(end_ms),
@@ -162,21 +192,37 @@ class TranscriptionPipeline:
         full_text = " ".join([seg["text"] for seg in transcript_segments if seg]).strip()
         return transcript_segments, full_text
 
-
     def transcribe_whisper(self):
-        self.logger.info("[INFO] Распознавание с помощью Whisper без разбивки на чанки")
-        result = self.whisper.transcribe(audio=self.audio_path, language="ru", fp16=False, task="transcribe")
+        self.logger.info("Распознавание с помощью Whisper")
+        try:
+            result = self.whisper.transcribe(
+                audio=self.audio_path,
+                language="ru",
+                fp16=False,
+                verbose=False
+            )
 
-        segments = []
-        for seg in result["segments"]:
-            segments.append({
-                "start_time": self.format_milliseconds(seg["start"] * 1000),
-                "end_time": self.format_milliseconds(seg["end"] * 1000),
-                "text": seg["text"].strip()
-            })
+            segments = []
+            for seg in result["segments"]:
+                start = float(seg["start"]) * 1000
+                end = float(seg["end"]) * 1000
+                self.logger.debug(f"Whisper segment: start={start}, end={end}, text={seg['text']}")
+                start_time = self.format_milliseconds(start)
+                end_time = self.format_milliseconds(end)
+                self.logger.debug(f"Formatted times: start_time={start_time}, end_time={end_time}")
+                segments.append({
+                    "start_time": start_time,
+                    "end_time": end_time,
+                    "text": seg["text"].strip()
+                })
 
-        full_text = result["text"].strip()
-        return segments, full_text
+            full_text = result["text"].strip()
+            self.logger.debug(f"Final segments: {segments}")
+            return segments, full_text
+
+        except Exception as e:
+            self.logger.error(f"Ошибка Whisper: {e}")
+            return [], ""
 
 
     def transcribe(self):
@@ -200,28 +246,41 @@ class TranscriptionPipeline:
 
     def save_to_srt(self, segments, path="transcription.srt"):
         def format_srt_time(time_value):
-            if isinstance(time_value, str):
-                if not time_value:
-                    return "00:00:00"
-                base = time_value.split(".", 1)[0]
-                parts = base.split(":")
-                if len(parts) != 3:
-                    return "00:00:00"
-                h, m, s = parts
-                try:
-                    h, m, s = int(h), int(m), int(s)
-                except ValueError:
-                    return "00:00:00"
-                return f"{h:02}:{m:02}:{s:02}"
-            if isinstance(time_value, (int, float)):
-                total = int(time_value)
-                h, rem = divmod(total, 3600)
-                m, s = divmod(rem, 60)
-                return f"{h:02}:{m:02}:{s:02}"
-            return "00:00:00"
+            logger.debug(f"Formatting SRT time: {time_value}, type: {type(time_value)}")
+            try:
+                if isinstance(time_value, str):
+                    time_value = time_value.replace(",", ".")
+                    # Проверяем строки вида XX.XXX или пустые
+                    if time_value in ['00.000', '0.000', ''] or '.' in time_value:
+                        try:
+                            logger.debug(f"Converting string to float: {time_value}")
+                            time_value = float(time_value) * 1000  # Секунды в миллисекунды
+                        except ValueError:
+                            logger.warning(f"Invalid float string: {time_value}, defaulting to 0")
+                            time_value = 0
+                    elif ":" in time_value:
+                        # Формат HH:MM:SS.sss
+                        base, ms_part = time_value.split(".", 1) if "." in time_value else (time_value, "0")
+                        logger.debug(f"Parsing time string: base={base}, ms_part={ms_part}")
+                        h, m, s = map(int, base.split(":"))
+                        ms = int(ms_part[:3].ljust(3, '0'))  # Нормализация миллисекунд
+                        time_value = (h * 3600000) + (m * 60000) + (s * 1000) + ms
+                    else:
+                        logger.warning(f"Unexpected string format: {time_value}, defaulting to 0")
+                        time_value = 0
+                # Обрабатываем числовое значение (в миллисекундах)
+                total_ms = int(time_value)
+                h, rem = divmod(total_ms, 3600000)
+                m, rem = divmod(rem, 60000)
+                s, ms = divmod(rem, 1000)
+                return f"{h:02}:{m:02}:{s:02},{ms:03}"
+            except Exception as e:
+                logger.error(f"Ошибка форматирования SRT времени: {time_value} -> {e}")
+                return "00:00:00,000"
 
         with open(path, "w", encoding="utf-8") as f:
             for i, seg in enumerate(segments, 1):
+                logger.debug(f"Processing segment {i}: {seg}")
                 start = format_srt_time(seg["start_time"])
                 end = format_srt_time(seg["end_time"])
                 text = seg["text"]
@@ -263,15 +322,17 @@ class TranscriptionPipeline:
             self.logger.info("[INFO] Запуск транскрибации...")
             chunked_texts, full_text = self.transcribe()
             self.logger.info("[INFO] Транскрибация завершена.")
+            self.logger.debug(f"Segments: {chunked_texts}")
             if self.engine == "whisper":
                 chunked_texts = self.merge_incomplete_segments(chunked_texts)
+                self.logger.debug(f"Merged segments: {chunked_texts}")
             self.logger.info(full_text)
             self.logger.info(f"[INFO] Время транскрибации: {time.time() - start:.2f} сек")
 
             return chunked_texts, full_text
 
         except Exception as e:
-            self.logger.error(f"[ERROR] Ошибка в процессе транскрибации: {e.with_traceback()}")
+            self.logger.error(f"[ERROR] Ошибка в процессе транскрибации: {e}", exc_info=True)
             return [], ""
 
         finally:

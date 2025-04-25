@@ -14,7 +14,7 @@ import uuid
 
 
 class VideoProcessor:
-    def __init__(self, output_dir="output_frames", model_path="frozen_east_text_detection.pb"):
+    def __init__(self, output_dir="output_frames", model_path="app/models/frozen_east_text_detection.pb"):
         """
         Инициализация VideoProcessor.
 
@@ -22,6 +22,7 @@ class VideoProcessor:
             output_dir (str): Папка для сохранения кадров и графиков.
             model_path (str): Путь к модели EAST для детекции текста.
         """
+
         self.output_dir = output_dir
         self.model_path = model_path
         os.makedirs(self.output_dir, exist_ok=True)
@@ -441,6 +442,7 @@ class VideoProcessor:
         Returns:
             dict: JSON-совместимый словарь с деталями кадров.
         """
+
         result = {}
         unique_frames = self.extract_unique_frames(video_path, threshold, frame_skip, num_threads)
         for frame_index, frame_path, timestamp in unique_frames:

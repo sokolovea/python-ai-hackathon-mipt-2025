@@ -70,7 +70,7 @@ async def upload_video(file: UploadFile = File(...)):
         print(f"Видео сохранено: {video_path}")
 
         process_video(video_path, output_dir)
-        pipeline = TranscriptionPipeline(video_path=video_path)
+        pipeline = TranscriptionPipeline(video_path=video_path, engine="whisper")
         segments, text = pipeline.run()
 
         with open(transcrib_path, 'w', encoding='UTF-8') as f:
